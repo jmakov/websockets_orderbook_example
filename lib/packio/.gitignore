@@ -1,0 +1,11 @@
+.vscode/
+.history/
+.clangd/
+build/
+__pycache__/
+.venv/
+
+docs/*
+!docs/sources/
+
+compile_commands.json
