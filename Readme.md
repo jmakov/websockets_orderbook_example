@@ -21,7 +21,11 @@ CLion toolchains can be extended with a Docker type. It requires a Docker image:
 ```bash
 DOCKER_BUILDKIT=1 docker build --target run_develop -t run_develop:latest .
 ```
-This can be used for debugging.
+Add a new CMake profile (Settings -> Build -> CMake -> Add) e.g. "Debug-Docker" and select the Docker toolchain. 
+
+To make the IDE aware which toolchain to use (and which indices/libs it should parse), change the "Run/Debug Configuration"
+to the configuration we have just created "Debug-Docker". After the IDE updates its index, we see the libs built in
+the Docker image can now be imported. 
 
 ## TODO
 - send logs to Clickhouse for real time visualization
