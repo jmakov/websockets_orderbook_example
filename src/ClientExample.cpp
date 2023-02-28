@@ -1,6 +1,7 @@
 #include <chrono>
 #include <iostream>
 #include <thread>
+#include <vector>
 
 #include <hv/WebSocketClient.h>
 #include <hv/AsyncHttpClient.h>
@@ -25,12 +26,13 @@ public:
         };
         onmessage = [this](const std::string& msg) {
             // TODO: parse market msgs and insert into OB
+            std::cout << msg << std::endl;
         };
         onclose = []() {std::cout << "connection closed" << std::endl;};
 
         open(url.data());
     };
-    void authenticate(std::string_view client_id, std::string_view client_secret) {
+    void subscribe(std::vector<std::string>& instruments) {
         rapidjson::StringBuffer buffer;
         rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);
 
@@ -38,33 +40,44 @@ public:
         writer.Key("jsonrpc");
         writer.String("2.0");
         writer.Key("id");
-        writer.Int(3);
+        writer.Int(m_request_id);
         writer.Key("method");
-        writer.String("public/auth");
+        writer.String("public/subscribe");
         writer.Key("params");
         writer.StartObject();
-        writer.Key("grant_type");
-        writer.String("client_credentials");
-        writer.Key("client_id");
-        writer.String(client_id.data());
-        writer.Key("client_secret");
-        writer.String(client_secret.data());
+        writer.Key("channels");
+
+        writer.StartArray();
+        for(const auto& instrument: instruments) {
+            writer.String(instrument.c_str());
+        }
+        writer.EndArray();
+
         writer.EndObject();
         writer.EndObject();
 
         while(!isConnected()) {
             std::this_thread::sleep_for(std::chrono::seconds(1));
         }
-        // TODO: investigate why we get "invalid_credentials" when the same request works using the API console.
-        //  Using `curl` in Bash also doesn't work (copy paste example from Deribit API docs with changed values)...
         send(buffer.GetString());
+        ++m_request_id;
     }
+private:
+    int m_request_id {0};
 };
 
 int main() {
     WSClient client{};
     client.connect("wss://test.deribit.com/ws/api/v2");
-    client.authenticate("pMyhloos", "mh4XFX9frkpPiKweIs2clGtV5EFqlauRECFjEzOAM5g");
+    std::vector<std::string> instruments_to_subscribe_to = {
+            "book.ADA_USDC-PERPETUAL.none.20.100ms",
+            "book.BTC-PERPETUAL.none.20.100ms"};
+    std::vector<std::string> trades_to_subscribe_to = {
+            "trades.ADA_USDC-PERPETUAL.100ms",
+            "trades.BTC-PERPETUAL.100ms"};
 
-    std::this_thread::sleep_for(std::chrono::seconds(2));
+    client.subscribe(instruments_to_subscribe_to);
+    client.subscribe(trades_to_subscribe_to);
+
+    std::this_thread::sleep_for(std::chrono::seconds(10000));
 }
